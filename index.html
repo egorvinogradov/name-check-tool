@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Name Tool</title>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="http://underscorejs.org/underscore.js"></script>
+</head>
+<body>
+<style>
+#wrap {
+  font: 15px/22px -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 50px;
+}
+#input {
+  border: 1px solid grey;
+  height: 30px;
+  width: 270px;
+  font-size: 15px;
+  text-indent: 6px;
+}
+#test_pic_fb,
+#test_pic_tw {
+  height: 100px;
+  width: 100px;
+  margin-right: 20px;
+}
+#submit {
+  height: 30px;
+  font-size: 15px;
+  width: 270px;
+}
+#moodleform {
+  display: none;
+}
+.avail {
+  color: grey;
+  padding-left: 20px;
+}
+.green {
+  color: green;
+}
+.red {
+  color: red;
+}
+</style>
+
+  <div id="wrap">
+
+    <h3>Enter name:</h3>
+    <p>
+      <input id="input" type="text" autofocus placeholder="e.g. leadplatform">
+    </p>
+    <p>
+      <button id="submit">Open domain check in new window</button>
+    </p>
+
+    <ul id="list"></ul>
+
+    <form id="moodleform"
+      target="_blank"
+      method="post"
+      action="https://www.101domain.com/domain-availability-search.htm">
+      <input type="hidden" name="action" value="search"/>
+      <input type="hidden" name="root" value=""/>
+      <input type="hidden" name="pt" value="pg_type_standart"/>
+    </form>
+
+    <table>
+      <tr>
+        <td>
+          <p>Facebook:</p>
+          <p><img src="" id="test_pic_fb"></p>
+        </td>
+        <td>
+          <p>Twitter:</p>
+          <p><img src="" id="test_pic_tw"></p>
+        </td>
+      </tr>
+    </table>
+
+    <p>
+      <br>
+      <br>
+      Open-source: <a href="https://github.com/egorvinogradov/name-check-tool" target="_blank">https://github.com/egorvinogradov/name-check-tool</a>
+    </p>
+
+  </div>
+
+
+<script>
+
+
+function isTwitterAvailable(username, callback) {
+  var img = $('#test_pic_tw')[0];
+  img.onload = function(){
+    // taken
+    callback(false);
+  };
+  img.onerror = function(){
+    // available
+    callback(true);
+  };
+  img.src = 'https://twitter.com/' + username + '/profile_image?size=bigger';
+};
+
+
+function isFacebookAvailable(username, callback){
+  var url = 'https://graph.facebook.com/' + username + '/picture';
+  $('#test_pic_fb').attr('src', url);
+  $.get(url).always(function(data){
+    if (!data.responseJSON) {
+      // taken
+      callback(false);
+    }
+    else {
+      try {
+        var message = data.responseJSON.error.message;
+        if ( message.indexOf('Some of the aliases you requested do not exist') > -1 ) {
+          // available
+          callback(true);
+        }
+        else {
+          // probably taken
+          callback(false);
+        }
+      }
+      catch (e) {
+        // probably taken
+        callback(false);
+      }
+    }
+  });
+}
+
+
+var prefixes = [
+  'https://facebook.com/',
+  'https://twitter.com/',
+];
+  
+
+$('#input').on('keyup', _.debounce(function(){
+  var val = $('#input').val().trim();
+  var items = prefixes.map(function(prefix){
+    var url = prefix + val;
+    return '<li><a href="' + url + '" target="_blank">' + url + '</a> <span class="avail">Checking availability...</span></li>';
+  });
+  $('#list').html(items.join('\n'));
+  $('input[name="root"]').val(val);
+
+
+  isFacebookAvailable(val, function(isAvailable){
+    setStatus(0, isAvailable, !val);
+  });
+  isTwitterAvailable(val, function(isAvailable){
+    setStatus(1, isAvailable, !val);
+  });
+
+}, 1000));
+
+$('#submit').on('click', function(){
+  $('#moodleform').submit();
+});
+
+
+
+function setStatus(itemIndex, isAvailable, reset){
+  var el = $('#list li').eq(itemIndex).find('.avail');
+  if (isAvailable) {
+    el.removeClass('red').addClass('green').html('Available');
+  }
+  else {
+    el.removeClass('green').addClass('red').html('Taken');
+  }
+  if (reset) {
+    el.removeClass('red green').html('');
+  };
+}
+
+
+</script>
+
+</body>
+</html>
